@@ -99,6 +99,34 @@
         50% { transform: translateY(-6px); }
       }
       .float { animation: float 4s ease-in-out infinite; }
+
+      /* Chevron rotation */
+      .rotate-180 { transform: rotate(180deg); }
+
+      /* Preset button active state polish */
+      .preset-btn.active {
+        position: relative;
+      }
+
+      /* Smooth expand/collapse for advanced panel */
+      #advancedPanel {
+        animation: slide-down 0.25s ease-out;
+      }
+      @keyframes slide-down {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Focus ring for accessibility */
+      button:focus-visible, input:focus-visible {
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+      }
+
+      /* Better button active state */
+      button:active:not(:disabled) {
+        transform: scale(0.98);
+      }
     </style>
   </head>
   <body>
@@ -128,7 +156,7 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12 space-y-8">
-      <!-- Hero -->
+      <!-- Hero + Stepper -->
       <section class="text-center max-w-3xl mx-auto">
         <div class="inline-flex items-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-3 py-1 text-xs text-white/70 mb-4">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -140,8 +168,26 @@
           en masse
         </h1>
         <p class="mt-4 text-white/60 text-lg">
-          Déposez plusieurs fichiers EPUB et réduisez leur taille automatiquement — images optimisées, code minifié, archive re-compressée.
+          Déposez vos fichiers, choisissez un profil, téléchargez. C'est tout.
         </p>
+
+        <!-- Stepper -->
+        <div class="mt-8 flex items-center justify-center gap-2 md:gap-4 text-sm">
+          <div class="flex items-center gap-2" data-step="1">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30">1</div>
+            <span class="text-white/80 hidden sm:inline">Ajoutez vos EPUB</span>
+          </div>
+          <div class="h-px w-6 md:w-12 bg-white/10"></div>
+          <div class="flex items-center gap-2 opacity-40" data-step="2">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 text-white/70 font-bold text-sm">2</div>
+            <span class="text-white/60 hidden sm:inline">Choisissez un profil</span>
+          </div>
+          <div class="h-px w-6 md:w-12 bg-white/10"></div>
+          <div class="flex items-center gap-2 opacity-40" data-step="3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 text-white/70 font-bold text-sm">3</div>
+            <span class="text-white/60 hidden sm:inline">Téléchargez</span>
+          </div>
+        </div>
       </section>
 
       <!-- Stats -->
@@ -194,20 +240,74 @@
           </div>
 
           <!-- File list -->
-          <div id="fileSection" class="hidden space-y-3">
-            <div class="flex items-center justify-between">
-              <h2 class="text-white font-semibold flex items-center gap-2">
-                <span>Fichiers</span>
-                <span id="fileCount" class="text-xs text-white/40 font-normal">(0)</span>
-              </h2>
-              <button id="clearBtn" class="rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-rose-500/15 hover:text-rose-300 hover:ring-rose-500/30 px-3 py-1.5 text-xs text-white/70 transition disabled:opacity-50">
-                Tout effacer
+          <div id="fileSection" class="space-y-4">
+            <!-- Section header (visible when files exist) -->
+            <div id="fileHeader" class="hidden">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-white font-semibold flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span>Vos fichiers</span>
+                  <span id="fileCount" class="text-xs bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30 px-2 py-0.5 rounded-full font-medium">0</span>
+                </h2>
+                <div class="flex gap-2">
+                  <button id="addMoreBtn" class="rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-violet-500/15 hover:text-violet-300 hover:ring-violet-500/30 px-3 py-1.5 text-xs text-white/70 transition inline-flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Ajouter
+                  </button>
+                  <button id="clearBtn" class="rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-rose-500/15 hover:text-rose-300 hover:ring-rose-500/30 px-3 py-1.5 text-xs text-white/70 transition disabled:opacity-50">
+                    Tout effacer
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div id="emptyState" class="gradient-border rounded-2xl p-10 text-center">
+              <div class="float mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 ring-1 ring-white/10">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                  <line x1="12" y1="8" x2="12" y2="14" />
+                  <line x1="9" y1="11" x2="15" y2="11" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white mb-1">Aucun fichier ajouté</h3>
+              <p class="text-sm text-white/50 mb-5">Commencez par ajouter vos EPUB via la zone ci-dessus</p>
+              <button id="emptyAddBtn" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-2.5 font-medium text-white shadow-lg shadow-violet-900/30 hover:from-violet-500 hover:to-cyan-500 transition">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Sélectionner des EPUB
               </button>
             </div>
+
+            <!-- File list -->
             <div id="fileList" class="space-y-2"></div>
 
+            <!-- Success banner -->
+            <div id="successBanner" class="hidden gradient-border rounded-2xl p-5 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 ring-1 ring-emerald-500/30">
+              <div class="flex items-start gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 ring-1 ring-emerald-500/40 text-emerald-300">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-white font-semibold">Compression terminée !</h3>
+                  <p id="successMessage" class="text-sm text-white/70 mt-0.5">Vos fichiers sont prêts à être téléchargés.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Action bar -->
-            <div class="sticky bottom-4 gradient-border rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 backdrop-blur-lg">
+            <div id="actionBar" class="hidden sticky bottom-4 gradient-border rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 backdrop-blur-lg bg-black/60">
               <div id="actionStatus" class="text-sm text-white/70">
                 0 fichier(s) en attente
               </div>
@@ -216,7 +316,7 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                   </svg>
-                  Compresser
+                  <span id="compressBtnLabel">Compresser</span>
                 </button>
                 <button id="downloadAllBtn" class="hidden flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 px-5 py-2.5 font-medium transition disabled:opacity-50">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -233,17 +333,131 @@
 
         <!-- Right: settings / info -->
         <div class="space-y-6">
-          <!-- Settings -->
+          <!-- Presets (main choice) -->
           <div class="gradient-border rounded-2xl p-5 md:p-6">
-            <div class="flex items-center gap-2 mb-5">
+            <div class="flex items-center gap-2 mb-4">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
               </svg>
-              <h3 class="text-white font-semibold">Options de compression</h3>
+              <h3 class="text-white font-semibold">Choisissez un profil</h3>
             </div>
+            <p class="text-xs text-white/50 mb-4">Le profil s'applique à tous les fichiers. Vous pouvez ajuster les réglages fins plus bas.</p>
 
-            <div class="space-y-5">
+            <div class="space-y-2" id="presetList">
+              <!-- Prudent -->
+              <button type="button" data-preset="gentle" class="preset-btn w-full text-left rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition p-4 group">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/30 text-emerald-300">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-white">Prudent</span>
+                        <span class="text-[10px] uppercase tracking-wider text-white/40">qualité max</span>
+                      </div>
+                      <p class="text-xs text-white/60 mt-0.5">Images presque inchangées · ~10-20% de gain</p>
+                    </div>
+                  </div>
+                  <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-white/20 group-[.active]:border-violet-400 group-[.active]:bg-violet-500 transition">
+                    <span class="h-2 w-2 rounded-full bg-white scale-0 group-[.active]:scale-100 transition"></span>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Balanced (default) -->
+              <button type="button" data-preset="balanced" class="preset-btn active w-full text-left rounded-xl bg-gradient-to-br from-violet-500/10 to-cyan-500/10 ring-2 ring-violet-500/50 transition p-4 group relative">
+                <div class="absolute -top-2 right-3 text-[10px] uppercase tracking-wider bg-gradient-to-r from-violet-500 to-cyan-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                  Recommandé
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 ring-1 ring-violet-500/40 text-violet-300">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20V10" />
+                        <path d="M18 20V4" />
+                        <path d="M6 20v-4" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-white">Équilibré</span>
+                      </div>
+                      <p class="text-xs text-white/70 mt-0.5">Bon compromis taille/qualité · ~30-50% de gain</p>
+                    </div>
+                  </div>
+                  <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-white/20 group-[.active]:border-violet-400 group-[.active]:bg-violet-500 transition">
+                    <span class="h-2 w-2 rounded-full bg-white scale-0 group-[.active]:scale-100 transition"></span>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Aggressive -->
+              <button type="button" data-preset="aggressive" class="preset-btn w-full text-left rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition p-4 group">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 ring-1 ring-cyan-500/30 text-cyan-300">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-white">Maximal</span>
+                        <span class="text-[10px] uppercase tracking-wider text-white/40">taille min</span>
+                      </div>
+                      <p class="text-xs text-white/60 mt-0.5">Images fortement compressées · ~50-70% de gain</p>
+                    </div>
+                  </div>
+                  <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-white/20 group-[.active]:border-violet-400 group-[.active]:bg-violet-500 transition">
+                    <span class="h-2 w-2 rounded-full bg-white scale-0 group-[.active]:scale-100 transition"></span>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Expert -->
+              <button type="button" data-preset="expert" class="preset-btn w-full text-left rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition p-4 group">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 ring-1 ring-rose-500/30 text-rose-300">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-white">Expert</span>
+                        <span class="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">compression max</span>
+                      </div>
+                      <p class="text-xs text-white/60 mt-0.5">Toutes les techniques · ~60-80% de gain · qualité visible réduite</p>
+                    </div>
+                  </div>
+                  <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-white/20 group-[.active]:border-violet-400 group-[.active]:bg-violet-500 transition">
+                    <span class="h-2 w-2 rounded-full bg-white scale-0 group-[.active]:scale-100 transition"></span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Advanced options (collapsible) -->
+          <div class="gradient-border rounded-2xl overflow-hidden">
+            <button id="advancedToggle" type="button" class="w-full flex items-center justify-between gap-2 p-4 hover:bg-white/5 transition">
+              <div class="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                <span class="text-white font-semibold text-sm">Options avancées</span>
+              </div>
+              <svg id="advancedChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white/50 transition-transform">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            <div id="advancedPanel" class="hidden border-t border-white/5 p-5 space-y-5">
               <div>
                 <div class="flex items-center justify-between mb-2">
                   <label class="text-sm text-white/80">Qualité des images</label>
@@ -262,31 +476,43 @@
                 <p class="text-xs text-white/40 mt-1">0 = pas de redimensionnement</p>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div class="grid grid-cols-1 gap-2">
                 <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
-                  <span class="text-sm text-white/80">Minifier le HTML</span>
+                  <div>
+                    <span class="text-sm text-white/80 block">Minifier le HTML</span>
+                    <span class="text-xs text-white/40">Supprime espaces et commentaires</span>
+                  </div>
                   <input id="optHtml" type="checkbox" checked class="hidden peer" />
                   <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
                     <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
                   </span>
                 </label>
                 <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
-                  <span class="text-sm text-white/80">Minifier le CSS</span>
+                  <div>
+                    <span class="text-sm text-white/80 block">Minifier le CSS</span>
+                    <span class="text-xs text-white/40">Compacte les feuilles de style</span>
+                  </div>
                   <input id="optCss" type="checkbox" checked class="hidden peer" />
                   <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
                     <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
                   </span>
                 </label>
                 <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
-                  <span class="text-sm text-white/80">Re-compresser ZIP</span>
+                  <div>
+                    <span class="text-sm text-white/80 block">Re-compresser l'archive</span>
+                    <span class="text-xs text-white/40">DEFLATE niveau 9 (recommandé)</span>
+                  </div>
                   <input id="optZip" type="checkbox" checked class="hidden peer" />
                   <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
                     <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
                   </span>
                 </label>
                 <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
-                  <span class="text-sm text-white/80">Nettoyer métadonnées</span>
-                  <input id="optMeta" type="checkbox" class="hidden peer" />
+                  <div>
+                    <span class="text-sm text-white/80 block">Compression adaptative</span>
+                    <span class="text-xs text-white/40">Essaie plusieurs qualités par image</span>
+                  </div>
+                  <input id="optAdaptive" type="checkbox" checked class="hidden peer" />
                   <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
                     <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
                   </span>
@@ -299,32 +525,27 @@
           <div class="gradient-border rounded-2xl p-5">
             <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
-              Comment ça marche ?
+              100% privé
             </h3>
-            <ol class="space-y-3 text-sm text-white/70">
-              <li class="flex gap-3">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">1</span>
-                <span class="leading-relaxed"><b>Ouverture</b> de l'archive EPUB (c'est un fichier ZIP).</span>
-              </li>
-              <li class="flex gap-3">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">2</span>
-                <span class="leading-relaxed"><b>Recompression</b> des images via Canvas (JPEG/WEBP avec qualité ajustée).</span>
-              </li>
-              <li class="flex gap-3">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">3</span>
-                <span class="leading-relaxed"><b>Minification</b> optionnelle du HTML et du CSS.</span>
-              </li>
-              <li class="flex gap-3">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">4</span>
-                <span class="leading-relaxed"><b>Reconstruction</b> de l'archive avec compression DEFLATE niveau 9.</span>
-              </li>
-            </ol>
-            <div class="mt-4 rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20 p-3 text-xs text-violet-200/90">
-              💡 Aucun fichier n'est envoyé sur Internet. Tout se passe dans votre navigateur.
+            <p class="text-sm text-white/70 leading-relaxed">
+              Vos fichiers restent sur votre appareil. Rien n'est envoyé sur Internet — tout le traitement se fait dans votre navigateur.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20 px-2.5 py-1 text-xs">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                Aucune upload
+              </span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20 px-2.5 py-1 text-xs">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                Gratuit
+              </span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20 px-2.5 py-1 text-xs">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                Illimité
+              </span>
             </div>
           </div>
         </div>
@@ -352,10 +573,48 @@
         minifyCss: true,
         removeUnusedMeta: false,
         reCompressZip: true,
-        skipSmallImages: true, // Skip images < 10KB
-        convertPngToJpeg: true, // Convert PNG without transparency to JPEG
-        adaptiveCompression: true, // Try multiple qualities
+        skipSmallImages: true,
+        convertPngToJpeg: true,
+        adaptiveCompression: true,
       };
+
+      // Presets
+      const PRESETS = {
+        gentle: {
+          imageQuality: 0.92,
+          maxImageDimension: 0,
+          minifyHtml: false,
+          minifyCss: false,
+          reCompressZip: true,
+          adaptiveCompression: false,
+        },
+        balanced: {
+          imageQuality: 0.82,
+          maxImageDimension: 2000,
+          minifyHtml: true,
+          minifyCss: true,
+          reCompressZip: true,
+          adaptiveCompression: true,
+        },
+        aggressive: {
+          imageQuality: 0.7,
+          maxImageDimension: 1600,
+          minifyHtml: true,
+          minifyCss: true,
+          reCompressZip: true,
+          adaptiveCompression: true,
+        },
+        expert: {
+          imageQuality: 0.6,
+          maxImageDimension: 1400,
+          minifyHtml: true,
+          minifyCss: true,
+          reCompressZip: true,
+          adaptiveCompression: true,
+        },
+      };
+
+      let currentPreset = "balanced";
 
       // =====================================================================
       // Utilitaires
@@ -400,7 +659,22 @@
       const GIF_EXT = /\.gif$/i;
       const HTML_EXT = /\.(x?html?|htm|opf|ncx)$/i;
       const CSS_EXT = /\.css$/i;
-      const SKIP_IMAGE_THRESHOLD = 5 * 1024; // Don't compress images < 5KB
+      const SKIP_IMAGE_THRESHOLD = 1 * 1024; // Only skip images < 1KB (was 5KB)
+      
+      // Files to remove from EPUB (junk/metadata files)
+      const JUNK_FILE_PATTERNS = [
+        /^\.DS_Store$/i,
+        /\/\.DS_Store$/i,
+        /^Thumbs\.db$/i,
+        /\/Thumbs\.db$/i,
+        /^iTunesMetadata\.plist$/i,
+        /\/iTunesMetadata\.plist$/i,
+        /^iTunesArtwork$/i,
+        /\/iTunesArtwork$/i,
+        /^META-INF\/com\.apple\.ibooks/i,
+        /^\._/i,  // macOS resource forks
+        /\/\._/i,
+      ];
 
       // Yield to browser to keep UI responsive
       function yieldToMain() {
@@ -428,12 +702,29 @@
           if (!f.dir) entries.push({ path, file: f });
         });
 
-        const imageEntries = entries.filter((e) => IMAGE_EXT.test(e.path));
+        // Remove junk files first (saves space without quality loss)
+        const junkPaths = new Set();
+        for (const { path, file: zipFile } of entries) {
+          if (JUNK_FILE_PATTERNS.some(pattern => pattern.test(path))) {
+            junkPaths.add(path);
+            try {
+              const data = await zipFile.async("uint8array");
+              details.bytesSavedOther += data.byteLength;
+              zip.remove(path);
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+        }
+        
+        // Filter out junk from entries we'll process
+        const cleanEntries = entries.filter(({ path }) => !junkPaths.has(path));
+        const imageEntries = cleanEntries.filter((e) => IMAGE_EXT.test(e.path));
         details.imagesTotal = imageEntries.length;
 
         let processed = 0;
         let lastRenderTime = 0;
-        const RENDER_INTERVAL = 100; // Only update progress every 100ms
+        const RENDER_INTERVAL = 100;
 
         // Process images in parallel (they're the heavy part)
         const imageTasks = imageEntries.map(async ({ path, file: zipFile }) => {
@@ -453,7 +744,7 @@
             const now = Date.now();
             if (now - lastRenderTime > RENDER_INTERVAL) {
               lastRenderTime = now;
-              onProgress(10 + Math.round((processed / entries.length) * 70));
+              onProgress(10 + Math.round((processed / cleanEntries.length) * 70));
               await yieldToMain();
             }
           }
@@ -469,7 +760,7 @@
         await yieldToMain();
 
         // Process HTML/CSS files sequentially (they're fast)
-        const textEntries = entries.filter(e => 
+        const textEntries = cleanEntries.filter(e => 
           (opts.minifyHtml && HTML_EXT.test(e.path)) || 
           (opts.minifyCss && CSS_EXT.test(e.path))
         );
@@ -504,8 +795,8 @@
         
         // Add files back - batch to keep UI responsive
         const BATCH = 20;
-        for (let i = 0; i < entries.length; i += BATCH) {
-          const batch = entries.slice(i, i + BATCH);
+        for (let i = 0; i < cleanEntries.length; i += BATCH) {
+          const batch = cleanEntries.slice(i, i + BATCH);
           for (const { path } of batch) {
             if (path === "mimetype") continue;
             const f = zip.file(path);
@@ -590,18 +881,37 @@
             } else {
               // No transparency - JPEG is most compatible with e-readers
               if (opts.adaptiveCompression) {
-                // Try multiple qualities to find best size/quality trade-off
-                const qualities = [opts.imageQuality];
-                // Only add lower qualities if user quality is high enough
-                if (opts.imageQuality > 0.7) qualities.push(0.7);
-                if (opts.imageQuality > 0.6) qualities.push(0.55);
+                // Try many qualities to find the sweet spot
+                // More granular testing for better results
+                const baseQ = opts.imageQuality;
+                const qualities = new Set([baseQ]);
                 
-                const jpegPromises = qualities.map(async (q) => {
+                // Add qualities around the base
+                qualities.add(Math.min(1, baseQ + 0.05));
+                qualities.add(Math.max(0.4, baseQ - 0.05));
+                qualities.add(Math.max(0.4, baseQ - 0.1));
+                qualities.add(Math.max(0.4, baseQ - 0.15));
+                qualities.add(Math.max(0.4, baseQ - 0.2));
+                
+                // If aggressive mode, also try very low qualities
+                if (baseQ < 0.7) {
+                  qualities.add(0.5);
+                  qualities.add(0.45);
+                  qualities.add(0.4);
+                }
+                
+                const jpegPromises = Array.from(qualities).map(async (q) => {
                   const b = await drawAndCompress(img, width, height, "image/jpeg", q);
                   return b ? { blob: b, format: "jpeg", quality: q } : null;
                 });
                 const jpegResults = await Promise.all(jpegPromises);
                 jpegResults.forEach(r => r && candidates.push(r));
+                
+                // Also try WebP if supported (often 25-35% smaller than JPEG at same quality)
+                if (supportsWebP()) {
+                  const webpBlob = await drawAndCompress(img, width, height, "image/webp", baseQ);
+                  if (webpBlob) candidates.push({ blob: webpBlob, format: "webp" });
+                }
               } else {
                 const jpegBlob = await drawAndCompress(img, width, height, "image/jpeg", opts.imageQuality);
                 if (jpegBlob) candidates.push({ blob: jpegBlob, format: "jpeg" });
@@ -610,9 +920,9 @@
 
             if (candidates.length === 0) return null;
 
-            // Pick the smallest that's at least 5% smaller than original
-            // (5% threshold avoids tiny gains that aren't worth format changes)
-            const MIN_SAVING_RATIO = 0.95;
+            // Lower threshold: accept even 2% savings
+            // Most small savings add up across many images
+            const MIN_SAVING_RATIO = 0.98;
             let best = null;
             for (const candidate of candidates) {
               if (candidate.blob.size < blob.size * MIN_SAVING_RATIO) {
@@ -622,7 +932,22 @@
               }
             }
 
-            // If nothing significantly smaller, keep original
+            // If nothing smaller at all, still use the best candidate if it's close
+            // (sometimes recompression is slightly larger but still worth it for consistency)
+            if (!best) {
+              // Find the absolute smallest even if not smaller than original
+              let smallest = null;
+              for (const candidate of candidates) {
+                if (!smallest || candidate.blob.size < smallest.blob.size) {
+                  smallest = candidate;
+                }
+              }
+              // Only use if it's not more than 5% larger (safety net)
+              if (smallest && smallest.blob.size < blob.size * 1.05) {
+                best = smallest;
+              }
+            }
+
             if (!best) return null;
 
             return new Uint8Array(await best.blob.arrayBuffer());
@@ -701,6 +1026,7 @@
         return false;
       }
 
+      // Multi-step downscaling for better quality
       function drawAndCompress(img, w, h, mime, quality) {
         return new Promise((resolve) => {
           // Validate dimensions
@@ -709,7 +1035,7 @@
             return;
           }
           
-          // Cap dimensions to browser limits (most browsers cap at 16384 or 32767)
+          // Cap dimensions to browser limits
           const MAX_DIM = 16000;
           if (w > MAX_DIM || h > MAX_DIM) {
             const scale = MAX_DIM / Math.max(w, h);
@@ -732,7 +1058,41 @@
               ctx.fillRect(0, 0, w, h);
             }
             
-            ctx.drawImage(img, 0, 0, w, h);
+            // Multi-step downscaling for better quality when scaling down significantly
+            const scaleRatio = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+            if (scaleRatio < 0.5) {
+              // Scale down in steps of 50% for better quality
+              let currentCanvas = document.createElement("canvas");
+              let currentCtx = currentCanvas.getContext("2d");
+              currentCanvas.width = img.naturalWidth;
+              currentCanvas.height = img.naturalHeight;
+              currentCtx.drawImage(img, 0, 0);
+              
+              let currentW = img.naturalWidth;
+              let currentH = img.naturalHeight;
+              
+              while (currentW > w * 2 || currentH > h * 2) {
+                const stepW = Math.floor(currentW / 2);
+                const stepH = Math.floor(currentH / 2);
+                const stepCanvas = document.createElement("canvas");
+                const stepCtx = stepCanvas.getContext("2d");
+                stepCanvas.width = stepW;
+                stepCanvas.height = stepH;
+                stepCtx.imageSmoothingEnabled = true;
+                stepCtx.imageSmoothingQuality = "high";
+                stepCtx.drawImage(currentCanvas, 0, 0, stepW, stepH);
+                currentCanvas = stepCanvas;
+                currentCtx = stepCtx;
+                currentW = stepW;
+                currentH = stepH;
+              }
+              
+              // Final step to target size
+              ctx.drawImage(currentCanvas, 0, 0, w, h);
+            } else {
+              // Direct scaling for small changes
+              ctx.drawImage(img, 0, 0, w, h);
+            }
             
             canvas.toBlob(
               (blob) => resolve(blob),
@@ -747,11 +1107,39 @@
       }
 
       function minifyXml(text) {
-        return text.replace(/<!--[\s\S]*?-->/g, "").replace(/>\s+</g, "><").replace(/\s{2,}/g, " ").trim();
+        return text
+          // Remove comments
+          .replace(/<!--[\s\S]*?-->/g, "")
+          // Remove whitespace between tags
+          .replace(/>\s+</g, "><")
+          // Collapse multiple spaces
+          .replace(/\s{2,}/g, " ")
+          // Remove whitespace after opening tags
+          .replace(/(<[^>]+>)\s+/g, "$1")
+          // Remove whitespace before closing tags
+          .replace(/\s+(<\/[^>]+>)/g, "$1")
+          // Remove empty lines
+          .replace(/^\s*[\r\n]/gm, "")
+          .trim();
       }
 
       function minifyCss(text) {
-        return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s*([{}:;,>~+])\s*/g, "$1").replace(/\s{2,}/g, " ").replace(/;}/g, "}").trim();
+        return text
+          // Remove comments
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          // Remove whitespace around special characters
+          .replace(/\s*([{}:;,>~+])\s*/g, "$1")
+          // Collapse multiple spaces
+          .replace(/\s{2,}/g, " ")
+          // Remove trailing semicolons
+          .replace(/;}/g, "}")
+          // Remove whitespace around selectors
+          .replace(/\s*,\s*/g, ",")
+          // Remove empty rules
+          .replace(/[^{}]+{}/g, "")
+          // Remove newlines
+          .replace(/[\r\n\t]/g, "")
+          .trim();
       }
 
       // =====================================================================
@@ -774,10 +1162,15 @@
           0
         );
         const processed = state.files.filter((f) => f.status === "done" || f.status === "error").length;
+        const hasFiles = state.files.length > 0;
+        const allDone = hasFiles && processed === state.files.length;
+
+        // Update stepper
+        updateStepper(hasFiles, allDone);
 
         // Stats
         const statsEl = $("stats");
-        if (state.files.length > 0) {
+        if (hasFiles) {
           statsEl.classList.remove("hidden");
           const saved = totalOriginal - totalCompressed;
           const percent = totalOriginal > 0 ? (saved / totalOriginal) * 100 : 0;
@@ -791,20 +1184,23 @@
           statsEl.classList.add("hidden");
         }
 
-        // File section - incremental update
-        const fileSection = $("fileSection");
+        // File section
+        const fileHeader = $("fileHeader");
+        const emptyState = $("emptyState");
         const fileList = $("fileList");
+        const actionBar = $("actionBar");
+        const successBanner = $("successBanner");
         
-        if (state.files.length > 0) {
-          fileSection.classList.remove("hidden");
-          $("fileCount").textContent = `(${state.files.length})`;
+        if (hasFiles) {
+          fileHeader.classList.remove("hidden");
+          emptyState.classList.add("hidden");
+          $("fileCount").textContent = state.files.length;
           
           // Only rebuild if file count changed
           const existingItems = fileList.children.length;
           if (existingItems !== state.files.length) {
             fileList.innerHTML = state.files.map(renderFileItem).join("");
           } else {
-            // Update existing items
             state.files.forEach((f, i) => {
               const item = fileList.children[i];
               if (item && item.dataset.fileId === f.id) {
@@ -812,8 +1208,27 @@
               }
             });
           }
+          
+          actionBar.classList.remove("hidden");
+          
+          // Success banner
+          if (allDone && !state.isRunning && processed > 0) {
+            const saved = totalOriginal - totalCompressed;
+            const percent = totalOriginal > 0 ? (saved / totalOriginal) * 100 : 0;
+            successBanner.classList.remove("hidden");
+            $("successMessage").textContent = 
+              saved > 0 
+                ? `Vous avez économisé ${formatBytes(saved)} (${percent.toFixed(1)}% de réduction) !`
+                : "Vos fichiers sont prêts.";
+          } else {
+            successBanner.classList.add("hidden");
+          }
         } else {
-          fileSection.classList.add("hidden");
+          fileHeader.classList.add("hidden");
+          emptyState.classList.remove("hidden");
+          fileList.innerHTML = "";
+          actionBar.classList.add("hidden");
+          successBanner.classList.add("hidden");
         }
 
         // Action bar status
@@ -827,15 +1242,24 @@
             </svg>
             Compression en cours…
           </span>`;
-        } else if (processed > 0 && processed === state.files.length) {
-          statusEl.innerHTML = `<span class="text-emerald-300">✓ Tous les fichiers sont prêts</span>`;
+        } else if (allDone) {
+          statusEl.innerHTML = `<span class="text-emerald-300 font-medium">✓ Tous les fichiers sont prêts</span>`;
         } else {
-          statusEl.textContent = `${pending} fichier(s) en attente`;
+          statusEl.textContent = `${pending} fichier${pending > 1 ? "s" : ""} en attente`;
         }
 
         // Buttons
         const compressBtn = $("compressBtn");
-        compressBtn.disabled = state.isRunning || state.files.every((f) => f.status === "done");
+        compressBtn.disabled = state.isRunning || !hasFiles || allDone;
+        
+        const compressBtnLabel = $("compressBtnLabel");
+        if (state.isRunning) {
+          compressBtnLabel.textContent = "Compression…";
+        } else if (allDone) {
+          compressBtnLabel.textContent = "Terminé";
+        } else {
+          compressBtnLabel.textContent = `Compresser ${pending > 0 ? `(${pending})` : ""}`;
+        }
 
         const downloadAllBtn = $("downloadAllBtn");
         if (processed > 0) {
@@ -849,6 +1273,55 @@
         }
 
         $("clearBtn").disabled = state.isRunning;
+      }
+
+      function updateStepper(hasFiles, allDone) {
+        const steps = document.querySelectorAll("[data-step]");
+        steps.forEach((step, i) => {
+          const stepNum = i + 1;
+          const circle = step.querySelector("div");
+          const text = step.querySelector("span");
+          
+          if (stepNum === 1) {
+            // Step 1: always active if files exist
+            if (hasFiles) {
+              step.classList.remove("opacity-40");
+              circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30";
+              circle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>`;
+            } else {
+              step.classList.remove("opacity-40");
+              circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30";
+              circle.textContent = "1";
+            }
+          } else if (stepNum === 2) {
+            // Step 2: active if files exist
+            if (hasFiles) {
+              step.classList.remove("opacity-40");
+              if (allDone) {
+                circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30";
+                circle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>`;
+              } else {
+                circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30";
+                circle.textContent = "2";
+              }
+            } else {
+              step.classList.add("opacity-40");
+              circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 text-white/70 font-bold text-sm";
+              circle.textContent = "2";
+            }
+          } else if (stepNum === 3) {
+            // Step 3: active if all done
+            if (allDone) {
+              step.classList.remove("opacity-40");
+              circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-violet-900/30";
+              circle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>`;
+            } else {
+              step.classList.add("opacity-40");
+              circle.className = "flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 text-white/70 font-bold text-sm";
+              circle.textContent = "3";
+            }
+          }
+        });
       }
 
       function statCard(label, value, sub, accent) {
@@ -920,10 +1393,18 @@
         const percent = f.originalSize > 0 ? (saved / f.originalSize) * 100 : 0;
 
         if (f.status === "done" && f.compressedSize != null) {
-          const badge =
-            percent > 0
-              ? `<span class="rounded-full px-2 py-0.5 font-medium bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">−${percent.toFixed(1)}%</span>`
-              : `<span class="rounded-full px-2 py-0.5 font-medium bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">inchangé</span>`;
+          let badge;
+          if (percent > 5) {
+            badge = `<span class="rounded-full px-2 py-0.5 font-medium bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">−${percent.toFixed(1)}%</span>`;
+          } else if (percent > 0) {
+            badge = `<span class="rounded-full px-2 py-0.5 font-medium bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">−${percent.toFixed(1)}%</span>`;
+          } else if (f.details?.note) {
+            // Show reason why file is unchanged
+            badge = `<span class="rounded-full px-2 py-0.5 font-medium bg-white/10 text-white/60 ring-1 ring-white/10" title="${f.details.note}">déjà optimisé</span>`;
+          } else {
+            badge = `<span class="rounded-full px-2 py-0.5 font-medium bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">inchangé</span>`;
+          }
+          
           const imgCount = f.details
             ? `<span class="text-white/40">${f.details.imagesCompressed}/${f.details.imagesTotal} images</span>`
             : "";
@@ -1047,6 +1528,9 @@
               const { blob, details } = await compressEpub(f.originalBlob, options, (p) =>
                 updateFile(f.id, { progress: p })
               );
+              
+              const savingPercent = ((f.originalSize - blob.size) / f.originalSize) * 100;
+              
               if (blob.size < f.originalSize) {
                 updateFile(f.id, {
                   status: "done",
@@ -1056,12 +1540,21 @@
                   details,
                 });
               } else {
+                // File unchanged - add context to details for better UX
+                const enhancedDetails = {
+                  ...details,
+                  note: details.imagesTotal === 0 
+                    ? "Aucune image à compresser (EPUB texte pur)" 
+                    : details.imagesCompressed === 0 
+                    ? "Images déjà optimisées au maximum" 
+                    : "Fichier déjà très optimisé",
+                };
                 updateFile(f.id, {
                   status: "done",
                   progress: 100,
                   compressedBlob: f.originalBlob,
                   compressedSize: f.originalSize,
-                  details: { ...details },
+                  details: enhancedDetails,
                 });
               }
             } catch (err) {
@@ -1132,19 +1625,73 @@
       $("downloadAllBtn").addEventListener("click", downloadAll);
       $("clearBtn").addEventListener("click", clearAll);
 
+      // Preset buttons
+      const presetBtns = document.querySelectorAll(".preset-btn");
+      presetBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const preset = btn.dataset.preset;
+          if (PRESETS[preset]) {
+            currentPreset = preset;
+            Object.assign(options, PRESETS[preset]);
+            
+            // Update UI
+            presetBtns.forEach((b) => {
+              b.classList.remove("active");
+              b.classList.remove("bg-gradient-to-br", "from-violet-500/10", "to-cyan-500/10", "ring-2", "ring-violet-500/50");
+              b.classList.add("bg-white/5", "ring-1", "ring-white/10");
+            });
+            btn.classList.add("active");
+            btn.classList.remove("bg-white/5", "ring-1", "ring-white/10");
+            btn.classList.add("bg-gradient-to-br", "from-violet-500/10", "to-cyan-500/10", "ring-2", "ring-violet-500/50");
+            
+            // Update sliders and toggles
+            $("qualityInput").value = options.imageQuality;
+            $("qualityLabel").textContent = Math.round(options.imageQuality * 100) + "%";
+            $("dimensionInput").value = options.maxImageDimension;
+            $("dimensionLabel").textContent = options.maxImageDimension === 0 ? "∞" : options.maxImageDimension + "px";
+            $("optHtml").checked = options.minifyHtml;
+            $("optCss").checked = options.minifyCss;
+            $("optZip").checked = options.reCompressZip;
+            $("optAdaptive").checked = options.adaptiveCompression;
+          }
+        });
+      });
+
+      // Advanced options toggle
+      const advancedToggle = $("advancedToggle");
+      const advancedPanel = $("advancedPanel");
+      const advancedChevron = $("advancedChevron");
+      advancedToggle.addEventListener("click", () => {
+        advancedPanel.classList.toggle("hidden");
+        advancedChevron.classList.toggle("rotate-180");
+      });
+
+      // Sliders
       $("qualityInput").addEventListener("input", (e) => {
         options.imageQuality = parseFloat(e.target.value);
         $("qualityLabel").textContent = Math.round(options.imageQuality * 100) + "%";
+        // Deselect preset if manually changed
+        presetBtns.forEach((b) => {
+          b.classList.remove("active", "bg-gradient-to-br", "from-violet-500/10", "to-cyan-500/10", "ring-2", "ring-violet-500/50");
+          b.classList.add("bg-white/5", "ring-1", "ring-white/10");
+        });
       });
+      
       $("dimensionInput").addEventListener("input", (e) => {
         options.maxImageDimension = parseInt(e.target.value);
         $("dimensionLabel").textContent =
           options.maxImageDimension === 0 ? "∞" : options.maxImageDimension + "px";
       });
+
+      // Toggles
       $("optHtml").addEventListener("change", (e) => (options.minifyHtml = e.target.checked));
       $("optCss").addEventListener("change", (e) => (options.minifyCss = e.target.checked));
       $("optZip").addEventListener("change", (e) => (options.reCompressZip = e.target.checked));
-      $("optMeta").addEventListener("change", (e) => (options.removeUnusedMeta = e.target.checked));
+      $("optAdaptive").addEventListener("change", (e) => (options.adaptiveCompression = e.target.checked));
+
+      // Add more buttons
+      $("addMoreBtn").addEventListener("click", () => fileInput.click());
+      $("emptyAddBtn").addEventListener("click", () => fileInput.click());
 
       // Expose pour onclick inline
       window.removeFile = removeFile;
