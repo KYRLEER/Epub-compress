@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Compressez plusieurs fichiers EPUB en ligne, gratuitement et côté client. Aucune donnée n'est envoyée sur un serveur." />
+    <title>EPUB Cruncher · Compresseur EPUB multi-fichiers</title>
+
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip pour manipuler les archives EPUB -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html, body {
+        height: 100%;
+      }
+      body {
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+          Arial, "Noto Sans", sans-serif;
+        background: radial-gradient(1200px 800px at 10% -10%, #1f1147 0%, transparent 60%),
+          radial-gradient(1000px 700px at 110% 10%, #0a2540 0%, transparent 55%),
+          #05060d;
+        color: #e6e7ee;
+        min-height: 100vh;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #2a2b43; border-radius: 8px; }
+      ::-webkit-scrollbar-thumb:hover { background: #3b3d60; }
+
+      /* Animated gradient border */
+      @keyframes shimmer {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+      }
+      .gradient-border {
+        position: relative;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .gradient-border::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(120deg, #8b5cf6, #06b6d4, #8b5cf6);
+        background-size: 200% 200%;
+        -webkit-mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+      .gradient-border:hover::before,
+      .gradient-border.active::before {
+        opacity: 1;
+        animation: shimmer 3s linear infinite;
+      }
+
+      /* Drop pulse */
+      @keyframes drop-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.3); }
+        50% { box-shadow: 0 0 0 18px rgba(139, 92, 246, 0); }
+      }
+      .drop-active {
+        animation: drop-pulse 1.4s ease-out infinite;
+        border-color: #8b5cf6 !important;
+        background: rgba(139, 92, 246, 0.08) !important;
+      }
+
+      /* Progress bar */
+      .progress-bar {
+        background: linear-gradient(90deg, #8b5cf6, #06b6d4);
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+      }
+
+      /* Fade in */
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .fade-up { animation: fade-up 0.35s ease-out both; }
+
+      /* Floating icon */
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+      }
+      .float { animation: float 4s ease-in-out infinite; }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="border-b border-white/5 backdrop-blur-sm bg-black/20">
+      <div class="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 shadow-lg shadow-violet-900/40">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+            </svg>
+          </div>
+          <div>
+            <div class="font-bold text-white tracking-tight">EPUB Cruncher</div>
+            <div class="text-xs text-white/50">Compresseur multi-EPUB · 100% local</div>
+          </div>
+        </div>
+        <span class="hidden md:inline-flex text-xs text-white/50 items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          Tout se passe dans votre navigateur
+        </span>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12 space-y-8">
+      <!-- Hero -->
+      <section class="text-center max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-3 py-1 text-xs text-white/70 mb-4">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Traitement local · Vos fichiers ne quittent jamais votre appareil
+        </div>
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-white">
+          Compressez vos
+          <span class="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">EPUB</span>
+          en masse
+        </h1>
+        <p class="mt-4 text-white/60 text-lg">
+          Déposez plusieurs fichiers EPUB et réduisez leur taille automatiquement — images optimisées, code minifié, archive re-compressée.
+        </p>
+      </section>
+
+      <!-- Stats -->
+      <div id="stats" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: uploader & list -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Uploader -->
+          <div id="uploader" class="gradient-border relative rounded-2xl p-10 md:p-14 text-center cursor-pointer transition-all">
+            <input id="fileInput" type="file" accept=".epub,application/epub+zip" multiple class="hidden" />
+            <div class="float mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 ring-1 ring-white/10">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#g1)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <defs>
+                  <linearGradient id="g1" x1="0" y1="0" x2="24" y2="24">
+                    <stop offset="0%" stop-color="#a78bfa" />
+                    <stop offset="100%" stop-color="#22d3ee" />
+                  </linearGradient>
+                </defs>
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                <path d="M9 10l3-3 3 3" />
+                <path d="M12 7v8" />
+              </svg>
+            </div>
+            <h3 id="uploaderTitle" class="text-xl md:text-2xl font-semibold text-white mb-2">
+              Glissez-déposez vos fichiers EPUB
+            </h3>
+            <p class="text-sm md:text-base text-white/60 mb-6 max-w-md mx-auto">
+              ou cliquez pour parcourir · plusieurs fichiers acceptés · tout reste dans votre navigateur
+            </p>
+            <button id="browseBtn" type="button" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-6 py-3 font-medium text-white shadow-lg shadow-violet-900/40 hover:from-violet-500 hover:to-cyan-500 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Sélectionner des fichiers
+            </button>
+            <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-white/40">
+              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> .epub
+              </span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> 100% local
+              </span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> aucune limite de taille
+              </span>
+            </div>
+          </div>
+
+          <!-- File list -->
+          <div id="fileSection" class="hidden space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-white font-semibold flex items-center gap-2">
+                <span>Fichiers</span>
+                <span id="fileCount" class="text-xs text-white/40 font-normal">(0)</span>
+              </h2>
+              <button id="clearBtn" class="rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-rose-500/15 hover:text-rose-300 hover:ring-rose-500/30 px-3 py-1.5 text-xs text-white/70 transition disabled:opacity-50">
+                Tout effacer
+              </button>
+            </div>
+            <div id="fileList" class="space-y-2"></div>
+
+            <!-- Action bar -->
+            <div class="sticky bottom-4 gradient-border rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 backdrop-blur-lg">
+              <div id="actionStatus" class="text-sm text-white/70">
+                0 fichier(s) en attente
+              </div>
+              <div class="flex gap-2">
+                <button id="compressBtn" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-2.5 font-medium text-white shadow-lg shadow-violet-900/40 hover:from-violet-500 hover:to-cyan-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                  </svg>
+                  Compresser
+                </button>
+                <button id="downloadAllBtn" class="hidden flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 px-5 py-2.5 font-medium transition disabled:opacity-50">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span id="downloadAllLabel">Tout télécharger</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: settings / info -->
+        <div class="space-y-6">
+          <!-- Settings -->
+          <div class="gradient-border rounded-2xl p-5 md:p-6">
+            <div class="flex items-center gap-2 mb-5">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <h3 class="text-white font-semibold">Options de compression</h3>
+            </div>
+
+            <div class="space-y-5">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-sm text-white/80">Qualité des images</label>
+                  <span id="qualityLabel" class="text-sm font-mono text-cyan-300">78%</span>
+                </div>
+                <input id="qualityInput" type="range" min="0.4" max="1" step="0.01" value="0.78" class="w-full accent-violet-500" />
+                <p class="text-xs text-white/40 mt-1">Plus bas = plus petit, mais images moins nettes</p>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-sm text-white/80">Dimension max des images</label>
+                  <span id="dimensionLabel" class="text-sm font-mono text-cyan-300">1800px</span>
+                </div>
+                <input id="dimensionInput" type="range" min="0" max="3200" step="100" value="1800" class="w-full accent-violet-500" />
+                <p class="text-xs text-white/40 mt-1">0 = pas de redimensionnement</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
+                  <span class="text-sm text-white/80">Minifier le HTML</span>
+                  <input id="optHtml" type="checkbox" checked class="hidden peer" />
+                  <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
+                    <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
+                  <span class="text-sm text-white/80">Minifier le CSS</span>
+                  <input id="optCss" type="checkbox" checked class="hidden peer" />
+                  <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
+                    <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
+                  <span class="text-sm text-white/80">Re-compresser ZIP</span>
+                  <input id="optZip" type="checkbox" checked class="hidden peer" />
+                  <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
+                    <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 ring-1 ring-white/10 px-4 py-3 cursor-pointer hover:bg-white/10 transition">
+                  <span class="text-sm text-white/80">Nettoyer métadonnées</span>
+                  <input id="optMeta" type="checkbox" class="hidden peer" />
+                  <span class="relative h-6 w-11 rounded-full bg-white/15 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-cyan-500 transition">
+                    <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="gradient-border rounded-2xl p-5">
+            <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+              Comment ça marche ?
+            </h3>
+            <ol class="space-y-3 text-sm text-white/70">
+              <li class="flex gap-3">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">1</span>
+                <span class="leading-relaxed"><b>Ouverture</b> de l'archive EPUB (c'est un fichier ZIP).</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">2</span>
+                <span class="leading-relaxed"><b>Recompression</b> des images via Canvas (JPEG/WEBP avec qualité ajustée).</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">3</span>
+                <span class="leading-relaxed"><b>Minification</b> optionnelle du HTML et du CSS.</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-xs font-bold text-white">4</span>
+                <span class="leading-relaxed"><b>Reconstruction</b> de l'archive avec compression DEFLATE niveau 9.</span>
+              </li>
+            </ol>
+            <div class="mt-4 rounded-lg bg-violet-500/10 ring-1 ring-violet-500/20 p-3 text-xs text-violet-200/90">
+              💡 Aucun fichier n'est envoyé sur Internet. Tout se passe dans votre navigateur.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="pt-8 pb-4 text-center text-xs text-white/30">
+        Fait avec ♥ · EPUB Cruncher · Traitement 100% local
+      </footer>
+    </main>
+
+    <script>
+      // =====================================================================
+      // État global
+      // =====================================================================
+      const state = {
+        files: [],
+        isRunning: false,
+        pendingRender: false,
+      };
+
+      const options = {
+        imageQuality: 0.78,
+        maxImageDimension: 1800,
+        minifyHtml: true,
+        minifyCss: true,
+        removeUnusedMeta: false,
+        reCompressZip: true,
+        skipSmallImages: true, // Skip images < 10KB
+        convertPngToJpeg: true, // Convert PNG without transparency to JPEG
+        adaptiveCompression: true, // Try multiple qualities
+      };
+
+      // =====================================================================
+      // Utilitaires
+      // =====================================================================
+      const $ = (id) => document.getElementById(id);
+
+      function makeId() {
+        return Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+
+      function formatBytes(bytes) {
+        if (bytes === 0) return "0 B";
+        const units = ["B", "KB", "MB", "GB"];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const value = bytes / Math.pow(1024, i);
+        return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+      }
+
+      function sanitize(name) {
+        return name.replace(/\.epub$/i, "") + "-compressed.epub";
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      // =====================================================================
+      // Compression logic
+      // =====================================================================
+      // Pre-compiled regexes for performance
+      const IMAGE_EXT = /\.(jpe?g|png|webp|gif|bmp|tiff?)$/i;
+      const JPEG_EXT = /\.(jpe?g)$/i;
+      const WEBP_EXT = /\.webp$/i;
+      const PNG_EXT = /\.png$/i;
+      const GIF_EXT = /\.gif$/i;
+      const HTML_EXT = /\.(x?html?|htm|opf|ncx)$/i;
+      const CSS_EXT = /\.css$/i;
+      const SKIP_IMAGE_THRESHOLD = 5 * 1024; // Don't compress images < 5KB
+
+      // Yield to browser to keep UI responsive
+      function yieldToMain() {
+        return new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      async function compressEpub(file, opts, onProgress) {
+        const details = {
+          imagesCompressed: 0,
+          imagesTotal: 0,
+          bytesSavedImages: 0,
+          bytesSavedOther: 0,
+          minifiedFiles: 0,
+        };
+
+        onProgress(2);
+        await yieldToMain();
+        
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+        onProgress(10);
+        await yieldToMain();
+
+        const entries = [];
+        zip.forEach((path, f) => {
+          if (!f.dir) entries.push({ path, file: f });
+        });
+
+        const imageEntries = entries.filter((e) => IMAGE_EXT.test(e.path));
+        details.imagesTotal = imageEntries.length;
+
+        let processed = 0;
+        let lastRenderTime = 0;
+        const RENDER_INTERVAL = 100; // Only update progress every 100ms
+
+        // Process images in parallel (they're the heavy part)
+        const imageTasks = imageEntries.map(async ({ path, file: zipFile }) => {
+          try {
+            const original = await zipFile.async("uint8array");
+            await yieldToMain();
+            const compressed = await compressImage(original, path, opts);
+            if (compressed) {
+              details.bytesSavedImages += Math.max(0, original.byteLength - compressed.byteLength);
+              details.imagesCompressed++;
+              zip.file(path, compressed);
+            }
+          } catch (err) {
+            console.warn(`Failed to compress image ${path}:`, err);
+          } finally {
+            processed++;
+            const now = Date.now();
+            if (now - lastRenderTime > RENDER_INTERVAL) {
+              lastRenderTime = now;
+              onProgress(10 + Math.round((processed / entries.length) * 70));
+              await yieldToMain();
+            }
+          }
+        });
+
+        // Process images with controlled parallelism
+        const IMAGE_CHUNK = 3; // Process 3 images at a time
+        for (let i = 0; i < imageTasks.length; i += IMAGE_CHUNK) {
+          await Promise.all(imageTasks.slice(i, i + IMAGE_CHUNK));
+        }
+
+        onProgress(80);
+        await yieldToMain();
+
+        // Process HTML/CSS files sequentially (they're fast)
+        const textEntries = entries.filter(e => 
+          (opts.minifyHtml && HTML_EXT.test(e.path)) || 
+          (opts.minifyCss && CSS_EXT.test(e.path))
+        );
+
+        for (const { path, file: zipFile } of textEntries) {
+          try {
+            const text = await zipFile.async("string");
+            let minified;
+            if (opts.minifyHtml && HTML_EXT.test(path)) {
+              minified = minifyXml(text);
+            } else if (opts.minifyCss && CSS_EXT.test(path)) {
+              minified = minifyCss(text);
+            }
+            if (minified && minified.length < text.length) {
+              details.bytesSavedOther += text.length - minified.length;
+              details.minifiedFiles++;
+              zip.file(path, minified);
+            }
+          } catch (err) {
+            console.warn(`Failed to minify ${path}:`, err);
+          }
+        }
+
+        onProgress(88);
+        await yieldToMain();
+
+        const outZip = new JSZip();
+        const mimetype = zip.file("mimetype");
+        if (mimetype) {
+          outZip.file("mimetype", await mimetype.async("string"), { compression: "STORE" });
+        }
+        
+        // Add files back - batch to keep UI responsive
+        const BATCH = 20;
+        for (let i = 0; i < entries.length; i += BATCH) {
+          const batch = entries.slice(i, i + BATCH);
+          for (const { path } of batch) {
+            if (path === "mimetype") continue;
+            const f = zip.file(path);
+            if (!f) continue;
+            const data = await f.async("uint8array");
+            outZip.file(path, data, {
+              compression: opts.reCompressZip ? "DEFLATE" : "STORE",
+              compressionOptions: { level: 9 },
+            });
+          }
+          await yieldToMain();
+        }
+
+        onProgress(96);
+        await yieldToMain();
+        
+        const blob = await outZip.generateAsync(
+          { type: "blob", mimeType: "application/epub+zip", compression: "STORE" },
+          (meta) => {
+            const p = 96 + Math.round(meta.percent * 0.04);
+            const now = Date.now();
+            if (now - lastRenderTime > RENDER_INTERVAL) {
+              lastRenderTime = now;
+              onProgress(p);
+            }
+          }
+        );
+
+        onProgress(100);
+        return { blob, details };
+      }
+
+      async function compressImage(data, path, opts) {
+        // Skip very small images - not worth the effort
+        if (opts.skipSmallImages && data.byteLength < SKIP_IMAGE_THRESHOLD) {
+          return null;
+        }
+        
+        // Skip GIF files (often animated - we'd lose frames)
+        if (GIF_EXT.test(path)) {
+          return null;
+        }
+
+        try {
+          const arrayBuf = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+          const blob = new Blob([arrayBuf]);
+          const url = URL.createObjectURL(blob);
+          try {
+            const img = await loadImage(url);
+            
+            // Skip tiny images (icons, etc)
+            if (img.naturalWidth < 32 && img.naturalHeight < 32) {
+              return null;
+            }
+            
+            const { width, height } = fitDimensions(
+              img.naturalWidth,
+              img.naturalHeight,
+              opts.maxImageDimension
+            );
+
+            const isPng = PNG_EXT.test(path);
+
+            // Determine if image has transparency (only check for PNG)
+            let hasTrans = false;
+            if (isPng) {
+              hasTrans = await hasTransparency(img, width, height);
+            }
+
+            // Strategy: try different formats/qualities, pick smallest result
+            const candidates = [];
+
+            if (hasTrans) {
+              // Must keep transparency - try PNG and WebP
+              const pngBlob = await drawAndCompress(img, width, height, "image/png");
+              if (pngBlob) candidates.push({ blob: pngBlob, format: "png" });
+              
+              if (supportsWebP()) {
+                const webpBlob = await drawAndCompress(img, width, height, "image/webp", opts.imageQuality);
+                if (webpBlob) candidates.push({ blob: webpBlob, format: "webp" });
+              }
+            } else {
+              // No transparency - JPEG is most compatible with e-readers
+              if (opts.adaptiveCompression) {
+                // Try multiple qualities to find best size/quality trade-off
+                const qualities = [opts.imageQuality];
+                // Only add lower qualities if user quality is high enough
+                if (opts.imageQuality > 0.7) qualities.push(0.7);
+                if (opts.imageQuality > 0.6) qualities.push(0.55);
+                
+                const jpegPromises = qualities.map(async (q) => {
+                  const b = await drawAndCompress(img, width, height, "image/jpeg", q);
+                  return b ? { blob: b, format: "jpeg", quality: q } : null;
+                });
+                const jpegResults = await Promise.all(jpegPromises);
+                jpegResults.forEach(r => r && candidates.push(r));
+              } else {
+                const jpegBlob = await drawAndCompress(img, width, height, "image/jpeg", opts.imageQuality);
+                if (jpegBlob) candidates.push({ blob: jpegBlob, format: "jpeg" });
+              }
+            }
+
+            if (candidates.length === 0) return null;
+
+            // Pick the smallest that's at least 5% smaller than original
+            // (5% threshold avoids tiny gains that aren't worth format changes)
+            const MIN_SAVING_RATIO = 0.95;
+            let best = null;
+            for (const candidate of candidates) {
+              if (candidate.blob.size < blob.size * MIN_SAVING_RATIO) {
+                if (!best || candidate.blob.size < best.blob.size) {
+                  best = candidate;
+                }
+              }
+            }
+
+            // If nothing significantly smaller, keep original
+            if (!best) return null;
+
+            return new Uint8Array(await best.blob.arrayBuffer());
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        } catch (err) {
+          console.warn(`Image compress failed for ${path}`, err);
+          return null;
+        }
+      }
+
+      // Cache WebP support detection
+      let _supportsWebP = null;
+      function supportsWebP() {
+        if (_supportsWebP !== null) return _supportsWebP;
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1;
+          canvas.height = 1;
+          _supportsWebP = canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+        } catch (e) {
+          _supportsWebP = false;
+        }
+        return _supportsWebP;
+      }
+
+      function loadImage(url, timeoutMs = 15000) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.decoding = "async";
+          
+          const timeoutId = setTimeout(() => {
+            img.src = "";
+            reject(new Error("Image load timeout"));
+          }, timeoutMs);
+          
+          img.onload = () => {
+            clearTimeout(timeoutId);
+            // Validate the image has real dimensions
+            if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+              reject(new Error("Invalid image dimensions"));
+              return;
+            }
+            resolve(img);
+          };
+          img.onerror = () => {
+            clearTimeout(timeoutId);
+            reject(new Error("Image load error"));
+          };
+          img.src = url;
+        });
+      }
+
+      function fitDimensions(w, h, max) {
+        if (max <= 0) return { width: w, height: h };
+        const longest = Math.max(w, h);
+        if (longest <= max) return { width: w, height: h };
+        const scale = max / longest;
+        return { width: Math.round(w * scale), height: Math.round(h * scale) };
+      }
+
+      async function hasTransparency(img, w, h) {
+        const sample = Math.min(w, h, 64);
+        const canvas = document.createElement("canvas");
+        canvas.width = sample;
+        canvas.height = sample;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return false;
+        ctx.drawImage(img, 0, 0, sample, sample);
+        const data = ctx.getImageData(0, 0, sample, sample).data;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] < 255) return true;
+        }
+        return false;
+      }
+
+      function drawAndCompress(img, w, h, mime, quality) {
+        return new Promise((resolve) => {
+          // Validate dimensions
+          if (w <= 0 || h <= 0 || !Number.isFinite(w) || !Number.isFinite(h)) {
+            resolve(null);
+            return;
+          }
+          
+          // Cap dimensions to browser limits (most browsers cap at 16384 or 32767)
+          const MAX_DIM = 16000;
+          if (w > MAX_DIM || h > MAX_DIM) {
+            const scale = MAX_DIM / Math.max(w, h);
+            w = Math.floor(w * scale);
+            h = Math.floor(h * scale);
+          }
+          
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) { resolve(null); return; }
+            
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            
+            if (mime === "image/jpeg") {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, w, h);
+            }
+            
+            ctx.drawImage(img, 0, 0, w, h);
+            
+            canvas.toBlob(
+              (blob) => resolve(blob),
+              mime,
+              mime === "image/png" ? undefined : quality
+            );
+          } catch (err) {
+            console.warn("Canvas compression error:", err);
+            resolve(null);
+          }
+        });
+      }
+
+      function minifyXml(text) {
+        return text.replace(/<!--[\s\S]*?-->/g, "").replace(/>\s+</g, "><").replace(/\s{2,}/g, " ").trim();
+      }
+
+      function minifyCss(text) {
+        return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s*([{}:;,>~+])\s*/g, "$1").replace(/\s{2,}/g, " ").replace(/;}/g, "}").trim();
+      }
+
+      // =====================================================================
+      // Rendering (optimized with debouncing)
+      // =====================================================================
+      function render() {
+        if (state.pendingRender) return;
+        state.pendingRender = true;
+        
+        requestAnimationFrame(() => {
+          state.pendingRender = false;
+          renderImmediate();
+        });
+      }
+
+      function renderImmediate() {
+        const totalOriginal = state.files.reduce((s, f) => s + f.originalSize, 0);
+        const totalCompressed = state.files.reduce(
+          (s, f) => s + (f.compressedSize ?? (f.status === "done" ? f.originalSize : 0)),
+          0
+        );
+        const processed = state.files.filter((f) => f.status === "done" || f.status === "error").length;
+
+        // Stats
+        const statsEl = $("stats");
+        if (state.files.length > 0) {
+          statsEl.classList.remove("hidden");
+          const saved = totalOriginal - totalCompressed;
+          const percent = totalOriginal > 0 ? (saved / totalOriginal) * 100 : 0;
+          statsEl.innerHTML = `
+            ${statCard("Fichiers", `${processed}/${state.files.length}`, state.isRunning ? "en cours…" : "traités", "violet")}
+            ${statCard("Taille originale", formatBytes(totalOriginal), "avant compression", "slate")}
+            ${statCard("Taille finale", totalCompressed > 0 ? formatBytes(totalCompressed) : "—", "après compression", "cyan")}
+            ${statCard("Espace gagné", saved > 0 ? `−${formatBytes(saved)}` : "—", percent > 0 ? `${percent.toFixed(1)}% de réduction` : "en attente", "emerald")}
+          `;
+        } else {
+          statsEl.classList.add("hidden");
+        }
+
+        // File section - incremental update
+        const fileSection = $("fileSection");
+        const fileList = $("fileList");
+        
+        if (state.files.length > 0) {
+          fileSection.classList.remove("hidden");
+          $("fileCount").textContent = `(${state.files.length})`;
+          
+          // Only rebuild if file count changed
+          const existingItems = fileList.children.length;
+          if (existingItems !== state.files.length) {
+            fileList.innerHTML = state.files.map(renderFileItem).join("");
+          } else {
+            // Update existing items
+            state.files.forEach((f, i) => {
+              const item = fileList.children[i];
+              if (item && item.dataset.fileId === f.id) {
+                updateFileItem(item, f);
+              }
+            });
+          }
+        } else {
+          fileSection.classList.add("hidden");
+        }
+
+        // Action bar status
+        const pending = state.files.length - processed;
+        const statusEl = $("actionStatus");
+        if (state.isRunning) {
+          statusEl.innerHTML = `<span class="inline-flex items-center gap-2">
+            <svg class="animate-spin h-4 w-4 text-violet-400" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="4" />
+              <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+            </svg>
+            Compression en cours…
+          </span>`;
+        } else if (processed > 0 && processed === state.files.length) {
+          statusEl.innerHTML = `<span class="text-emerald-300">✓ Tous les fichiers sont prêts</span>`;
+        } else {
+          statusEl.textContent = `${pending} fichier(s) en attente`;
+        }
+
+        // Buttons
+        const compressBtn = $("compressBtn");
+        compressBtn.disabled = state.isRunning || state.files.every((f) => f.status === "done");
+
+        const downloadAllBtn = $("downloadAllBtn");
+        if (processed > 0) {
+          downloadAllBtn.classList.remove("hidden");
+          downloadAllBtn.classList.add("inline-flex");
+          $("downloadAllLabel").textContent =
+            processed === 1 ? "Télécharger" : `Tout télécharger (${processed})`;
+        } else {
+          downloadAllBtn.classList.add("hidden");
+          downloadAllBtn.classList.remove("inline-flex");
+        }
+
+        $("clearBtn").disabled = state.isRunning;
+      }
+
+      function statCard(label, value, sub, accent) {
+        const map = {
+          violet: "from-violet-500/20 to-violet-500/5 text-violet-200",
+          cyan: "from-cyan-500/20 to-cyan-500/5 text-cyan-200",
+          emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-200",
+          slate: "from-white/10 to-white/5 text-white",
+        };
+        return `
+          <div class="rounded-xl bg-gradient-to-br ${map[accent]} ring-1 ring-white/10 p-4">
+            <div class="text-xs uppercase tracking-wider text-white/50 mb-1">${label}</div>
+            <div class="text-2xl font-bold truncate">${value}</div>
+            <div class="text-xs text-white/40 mt-0.5">${sub}</div>
+          </div>
+        `;
+      }
+
+      function renderFileItem(f) {
+        const saved = f.compressedSize != null ? f.originalSize - f.compressedSize : 0;
+        const percent = f.originalSize > 0 ? (saved / f.originalSize) * 100 : 0;
+
+        let statusLabel = getStatusLabel(f);
+        const progressBar = getProgressBar(f);
+        const downloadBtn = getDownloadBtn(f);
+
+        return `
+          <div data-file-id="${f.id}" class="fade-up gradient-border rounded-xl p-4 hover:bg-white/[0.02] transition">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 ring-1 ring-white/10">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#g2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <defs>
+                    <linearGradient id="g2" x1="0" y1="0" x2="24" y2="24">
+                      <stop offset="0%" stop-color="#a78bfa" />
+                      <stop offset="100%" stop-color="#22d3ee" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="font-medium text-white truncate" title="${f.name}">${f.name}</div>
+                    <div class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50" data-status>
+                      <span>${formatBytes(f.originalSize)}</span>
+                      ${statusLabel}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    ${downloadBtn}
+                    <button onclick="removeFile('${f.id}')" class="rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-rose-500/15 hover:text-rose-300 hover:ring-rose-500/30 p-1.5 text-white/50 transition" title="Retirer">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div data-progress>${progressBar}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function getStatusLabel(f) {
+        const saved = f.compressedSize != null ? f.originalSize - f.compressedSize : 0;
+        const percent = f.originalSize > 0 ? (saved / f.originalSize) * 100 : 0;
+
+        if (f.status === "done" && f.compressedSize != null) {
+          const badge =
+            percent > 0
+              ? `<span class="rounded-full px-2 py-0.5 font-medium bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">−${percent.toFixed(1)}%</span>`
+              : `<span class="rounded-full px-2 py-0.5 font-medium bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">inchangé</span>`;
+          const imgCount = f.details
+            ? `<span class="text-white/40">${f.details.imagesCompressed}/${f.details.imagesTotal} images</span>`
+            : "";
+          return `
+            <span class="text-white/30">→</span>
+            <span class="text-cyan-300">${formatBytes(f.compressedSize)}</span>
+            ${badge}
+            ${imgCount}
+          `;
+        } else if (f.status === "processing") {
+          return `<span class="text-violet-300">Compression… ${f.progress}%</span>`;
+        } else if (f.status === "pending") {
+          return `<span class="text-white/40">En attente</span>`;
+        } else if (f.status === "error") {
+          return `<span class="text-rose-400">${f.error || "Erreur"}</span>`;
+        }
+        return "";
+      }
+
+      function getProgressBar(f) {
+        if (f.status === "processing" || f.status === "done") {
+          return `<div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+            <div class="progress-bar h-full rounded-full transition-all duration-200" style="width: ${f.status === "done" ? 100 : f.progress}%"></div>
+          </div>`;
+        }
+        return "";
+      }
+
+      function getDownloadBtn(f) {
+        if (f.status === "done" && f.compressedBlob) {
+          return `<button onclick="downloadOne('${f.id}')" class="rounded-lg bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 px-3 py-1.5 text-xs font-medium inline-flex items-center gap-1.5 transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Télécharger
+          </button>`;
+        }
+        return "";
+      }
+
+      function updateFileItem(item, f) {
+        // Update only the changed parts
+        const statusEl = item.querySelector("[data-status]");
+        const progressEl = item.querySelector("[data-progress]");
+        
+        if (statusEl) {
+          const originalSizeHtml = `<span>${formatBytes(f.originalSize)}</span>`;
+          statusEl.innerHTML = originalSizeHtml + getStatusLabel(f);
+        }
+        if (progressEl) {
+          progressEl.innerHTML = getProgressBar(f);
+        }
+        
+        // Update download button if needed
+        const btnContainer = item.querySelector(".flex.items-center.gap-1\\.5");
+        if (btnContainer) {
+          const existingDownload = btnContainer.querySelector("button:first-child:not([title='Retirer'])");
+          const newDownloadHtml = getDownloadBtn(f);
+          
+          if (newDownloadHtml && !existingDownload) {
+            btnContainer.insertAdjacentHTML("afterbegin", newDownloadHtml);
+          } else if (!newDownloadHtml && existingDownload) {
+            existingDownload.remove();
+          }
+        }
+      }
+
+      // =====================================================================
+      // Actions
+      // =====================================================================
+      function addFiles(fileList) {
+        const arr = Array.from(fileList).filter(
+          (f) => f.type === "application/epub+zip" || f.name.toLowerCase().endsWith(".epub")
+        );
+        if (arr.length === 0) return;
+        const mapped = arr.map((f) => ({
+          id: makeId(),
+          name: f.name,
+          originalSize: f.size,
+          originalBlob: f,
+          status: "pending",
+          progress: 0,
+        }));
+        state.files = [...state.files, ...mapped];
+        render();
+      }
+
+      function removeFile(id) {
+        state.files = state.files.filter((f) => f.id !== id);
+        render();
+      }
+
+      function clearAll() {
+        if (state.isRunning) return;
+        state.files = [];
+        render();
+      }
+
+      function updateFile(id, patch) {
+        state.files = state.files.map((f) => (f.id === id ? { ...f, ...patch } : f));
+        render();
+      }
+
+      async function start() {
+        if (state.isRunning) return;
+        const queue = state.files.filter((f) => f.status !== "done");
+        if (queue.length === 0) return;
+        state.isRunning = true;
+        render();
+
+        // Process 2 EPUBs in parallel for better throughput
+        // (each EPUB itself processes images in parallel internally)
+        const EPUB_CHUNK = 2;
+        for (let i = 0; i < queue.length; i += EPUB_CHUNK) {
+          const batch = queue.slice(i, i + EPUB_CHUNK);
+          await Promise.all(batch.map(async (f) => {
+            updateFile(f.id, { status: "processing", progress: 0, error: undefined });
+            try {
+              const { blob, details } = await compressEpub(f.originalBlob, options, (p) =>
+                updateFile(f.id, { progress: p })
+              );
+              if (blob.size < f.originalSize) {
+                updateFile(f.id, {
+                  status: "done",
+                  progress: 100,
+                  compressedBlob: blob,
+                  compressedSize: blob.size,
+                  details,
+                });
+              } else {
+                updateFile(f.id, {
+                  status: "done",
+                  progress: 100,
+                  compressedBlob: f.originalBlob,
+                  compressedSize: f.originalSize,
+                  details: { ...details },
+                });
+              }
+            } catch (err) {
+              updateFile(f.id, {
+                status: "error",
+                error: err?.message || "Erreur inconnue",
+              });
+            }
+          }));
+        }
+        state.isRunning = false;
+        render();
+      }
+
+      function downloadOne(id) {
+        const file = state.files.find((f) => f.id === id);
+        if (!file || !file.compressedBlob) return;
+        downloadBlob(file.compressedBlob, sanitize(file.name));
+      }
+
+      async function downloadAll() {
+        const ready = state.files.filter((f) => f.status === "done" && f.compressedBlob);
+        if (ready.length === 0) return;
+        if (ready.length === 1) {
+          downloadOne(ready[0].id);
+          return;
+        }
+        const zip = new JSZip();
+        ready.forEach((f) => zip.file(sanitize(f.name), f.compressedBlob));
+        const blob = await zip.generateAsync({ type: "blob" });
+        downloadBlob(blob, `epub-compressed-${Date.now()}.zip`);
+      }
+
+      // =====================================================================
+      // Event listeners
+      // =====================================================================
+      const uploader = $("uploader");
+      const fileInput = $("fileInput");
+      const uploaderTitle = $("uploaderTitle");
+
+      $("browseBtn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+      uploader.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files) addFiles(e.target.files);
+        e.target.value = "";
+      });
+
+      uploader.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploader.classList.add("drop-active", "active");
+        uploaderTitle.textContent = "Déposez vos EPUB ici";
+      });
+      uploader.addEventListener("dragleave", () => {
+        uploader.classList.remove("drop-active", "active");
+        uploaderTitle.textContent = "Glissez-déposez vos fichiers EPUB";
+      });
+      uploader.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploader.classList.remove("drop-active", "active");
+        uploaderTitle.textContent = "Glissez-déposez vos fichiers EPUB";
+        if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+      });
+
+      $("compressBtn").addEventListener("click", start);
+      $("downloadAllBtn").addEventListener("click", downloadAll);
+      $("clearBtn").addEventListener("click", clearAll);
+
+      $("qualityInput").addEventListener("input", (e) => {
+        options.imageQuality = parseFloat(e.target.value);
+        $("qualityLabel").textContent = Math.round(options.imageQuality * 100) + "%";
+      });
+      $("dimensionInput").addEventListener("input", (e) => {
+        options.maxImageDimension = parseInt(e.target.value);
+        $("dimensionLabel").textContent =
+          options.maxImageDimension === 0 ? "∞" : options.maxImageDimension + "px";
+      });
+      $("optHtml").addEventListener("change", (e) => (options.minifyHtml = e.target.checked));
+      $("optCss").addEventListener("change", (e) => (options.minifyCss = e.target.checked));
+      $("optZip").addEventListener("change", (e) => (options.reCompressZip = e.target.checked));
+      $("optMeta").addEventListener("change", (e) => (options.removeUnusedMeta = e.target.checked));
+
+      // Expose pour onclick inline
+      window.removeFile = removeFile;
+      window.downloadOne = downloadOne;
+
+      render();
+    </script>
+  </body>
+</html>
